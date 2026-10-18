@@ -66,9 +66,9 @@ class Recommender(Protocol):
     name: str
 
     def recommend(
-        self, history: Sequence[tuple[int, float]], exclude: set[int], k: int
+        self, history: Sequence[tuple[int, float, float]], exclude: set[int], k: int
     ) -> list[int]:
-        """Top k titles for a user with these (title_id, rating) pairs, oldest first."""
+        """Top k titles for a user with these (title_id, rating, unix time), oldest first."""
         ...
 
     def similar(self, title_id: int, k: int) -> list[int]:
@@ -138,7 +138,7 @@ class PopularInGenre:
         return top_k(scores, self.cat.ids, exclude, k)
 
     def recommend(self, history, exclude, k):
-        liked = [t for t, r in history if r >= POSITIVE] or [t for t, _ in history]
+        liked = [t for t, r, _ in history if r >= POSITIVE] or [t for t, _, _ in history]
         return self._rank(liked, exclude, k)
 
     def similar(self, title_id, k):
@@ -168,16 +168,22 @@ class TmdbRecs:
         return out
 
     def recommend(self, history, exclude, k):
-        return self._rank([t for t, r in history if r >= POSITIVE], exclude, k)
+        return self._rank([t for t, r, _ in history if r >= POSITIVE], exclude, k)
 
     def similar(self, title_id, k):
         return self._rank([title_id], {title_id}, k)
 
 
-ModelFactory = Callable[[Catalogue, Interactions | None], Recommender]
+# A factory gets the catalogue to rank, the train users' interactions, and a database
+# connection for any features it needs.
+ModelFactory = Callable[[Catalogue, Interactions | None, Connection], Recommender]
 
 MODELS: dict[str, ModelFactory] = {
-    "popular": lambda cat, _: Popular(cat),
-    "popular-genre": lambda cat, _: PopularInGenre(cat),
-    "tmdb": lambda cat, _: TmdbRecs(cat),
+    "popular": lambda cat, _, __: Popular(cat),
+    "popular-genre": lambda cat, _, __: PopularInGenre(cat),
+    "tmdb": lambda cat, _, __: TmdbRecs(cat),
 }
+
+
+def register(name: str, factory: ModelFactory) -> None:
+    MODELS[name] = factory

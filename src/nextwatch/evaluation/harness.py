@@ -46,7 +46,9 @@ def run_t1(model: Recommender, users: list[EvalUser], k: int = K) -> dict[str, A
     """ "For you": rank unseen titles from history, score against held-out positives."""
     recall, ndcg, lists = [], [], []
     for u in users:
-        history = list(zip(u.history.tolist(), u.history_ratings.tolist(), strict=True))
+        history = list(
+            zip(u.history.tolist(), u.history_ratings.tolist(), u.history_ts.tolist(), strict=True)
+        )
         ranked = model.recommend(history, set(u.history.tolist()), k)
         lists.append(ranked)
         recall.append(metrics.recall_at_k(ranked, u.holdout_positives, k))

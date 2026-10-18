@@ -38,6 +38,7 @@ One text per title, embedded:
 - Stored in `title_embedding` as `halfvec(384)` with an HNSW index ([02](02-storage.md)).
 - `sim_embed` is cosine similarity.
 - Only re-embed when `source_hash` changes.
+- Measured on the VM: ~490 short texts a second on CPU, so the first full run is 5–15 minutes. The model files (~65 MB) are cached in `data/models/`.
 
 If a bigger model clearly wins on [03](03-evaluation.md), we switch. The model name is a column, so two can live side by side while we compare.
 

@@ -83,9 +83,9 @@ def catalogue(n=50) -> Catalogue:
 def test_baselines():
     cat = catalogue()
     assert Popular(cat).recommend([], {50}, 3) == [49, 48, 47]
-    genre = PopularInGenre(cat).recommend([(3, 5.0), (6, 5.0)], {3, 6}, 3)
+    genre = PopularInGenre(cat).recommend([(3, 5.0, 0), (6, 5.0, 0)], {3, 6}, 3)
     assert all(t % 3 == 0 for t in genre)
-    assert TmdbRecs(cat).recommend([(1, 5.0), (2, 4.0)], {1, 2}, 3) == [8, 7, 50]
+    assert TmdbRecs(cat).recommend([(1, 5.0, 0), (2, 4.0, 0)], {1, 2}, 3) == [8, 7, 50]
     assert TmdbRecs(cat).similar(1, 2) == [7, 8]
 
 
@@ -98,7 +98,7 @@ class Cheat:
         self.answers = {tuple(u.history.tolist()): sorted(u.holdout_positives) for u in users}
 
     def recommend(self, history, exclude, k):
-        return self.answers[tuple(t for t, _ in history)][:k]
+        return self.answers[tuple(t for t, _, _ in history)][:k]
 
     def similar(self, title_id, k):
         return []

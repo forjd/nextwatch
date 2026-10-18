@@ -50,6 +50,7 @@ Python 3.12 for everything (ingest, features, training, API), managed with `uv`.
 | `src/nextwatch/backup.py` | Export and import of the owner's ratings and events |
 | `src/nextwatch/movielens.py` | MovieLens 32M download, Parquet conversion, TMDB links |
 | `src/nextwatch/evaluation/` | Splits, metrics, baselines (`MODELS`) and the eval harness |
+| `src/nextwatch/features/` | Sparse TF-IDF families (`sparse.py`), embeddings (`embed.py`), content models (`content.py`) |
 | `src/nextwatch/http.py` | Shared HTTP settings (system CA store) |
 | `eval/golden.yaml` | Golden set for T3, written by the owner |
 | `tests/` | pytest. `conftest.py` has a fake TMDB API and a throwaway test database |
@@ -75,6 +76,8 @@ uv run nextwatch sync         # daily
 uv run nextwatch refresh      # daily, after sync
 uv run nextwatch normalise    # after sync/refresh: rebuild changed titles
 uv run nextwatch export       # owner data to data/backups/owner-data.json.gz
+uv run nextwatch embed        # after normalise: embed new or changed titles
+uv run nextwatch similar movie/603             # quick look at "more like this"
 uv run nextwatch movielens fetch               # once, before backfill
 uv run nextwatch eval run --model popular      # see `eval models`
 uv run nextwatch eval compare <run> <run>
@@ -91,6 +94,7 @@ Before committing, run `uv run ruff check .`, `uv run ruff format --check .` and
 - Ingest jobs take a Postgres advisory lock, so only one runs at a time.
 - Tests never call the real TMDB API. Add behaviour to `FakeTmdb` instead. Payload fixtures shaped like real responses live in `tests/payloads.py`.
 - Use `nextwatch.http.SSL_CONTEXT` for every HTTP client: certifi's bundle rejects `files.grouplens.org`.
+- Recommenders get history as `(title_id, rating, unix_time)`, oldest first.
 - A new recommender must register in `MODELS` and be compared with `eval compare` against the current best before it is kept.
 - Each plan owns its tables: add them in a new migration when that plan is built, not earlier.
 
@@ -111,7 +115,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): 
 | [01 — Ingest](docs/plans/01-ingest.md) | TMDB exports, two-pass fetch, daily sync | Built, tested against a fake API. Not yet run against real TMDB. |
 | [02 — Storage](docs/plans/02-storage.md) | Postgres schema, normalise, size budget, backups | Built and tested. GitHub upload of backups is part of 09. |
 | [03 — Evaluation](docs/plans/03-evaluation.md) | MovieLens splits, metrics, golden set, harness | Built and tested on synthetic data. Real runs wait for the TMDB backfill. Golden set has 3 starter cases. |
-| [04 — Content similarity](docs/plans/04-content-similarity.md) | TF-IDF feature families, embeddings, profiles | Not started |
+| [04 — Content similarity](docs/plans/04-content-similarity.md) | TF-IDF feature families, embeddings, profiles | Built and tested; real model checked. Experiments wait for the backfill. |
 | [05 — Vibe tags](docs/plans/05-vibe-tags.md) | LLM tags from a fixed vocabulary, through OpenRouter | Not started |
 | [06 — Collaborative filtering](docs/plans/06-collaborative-filtering.md) | Implicit ALS on MovieLens, owner fold-in, coverage gaps | Not started |
 | [07 — Ranking](docs/plans/07-ranking.md) | Candidates, features, LambdaRank, re-ranking | Not started |

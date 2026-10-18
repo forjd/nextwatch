@@ -152,6 +152,7 @@ def eval_group() -> None:
 @click.option("--golden", type=click.Path(path_type=Path), default=Path("eval/golden.yaml"))
 def eval_run(model_name: str, split: str, n_users: int, golden: Path) -> None:
     """Score a model on T1, T2 and the golden set, and save the run."""
+    import nextwatch.features.content  # noqa: F401 - registers the content models
     from nextwatch.evaluation import data, harness
     from nextwatch.evaluation.models import MODELS, Catalogue
 
@@ -165,10 +166,10 @@ def eval_run(model_name: str, split: str, n_users: int, golden: Path) -> None:
         users = data.eval_users(interactions, split, n_users)
         train = data.train_interactions(interactions)
         result = harness.evaluate(
-            factory(movie_cat, train),
+            factory(movie_cat, train, conn),
             users,
             movie_cat,
-            model_all=factory(full_cat, train),
+            model_all=factory(full_cat, train, conn),
             full_cat=full_cat,
             golden=harness.load_golden(golden),
         )
@@ -202,6 +203,41 @@ def eval_compare(a: int, b: int) -> None:
 @eval_group.command("models")
 def eval_models() -> None:
     """List the models `eval run` can score."""
+    import nextwatch.features.content  # noqa: F401 - registers the content models
     from nextwatch.evaluation.models import MODELS
 
     click.echo("\n".join(MODELS))
+
+
+@main.command()
+def embed() -> None:
+    """Embed titles whose text changed (plan 04). Downloads the model on first run."""
+    from nextwatch.features import embed as e
+
+    embedder = e.fastembed_embedder(DATA_DIR / "models")
+    with db.connect(load_settings().database_url, autocommit=True) as conn:
+        n = e.embed_titles(conn, embedder)
+        db.log_db_size(conn)
+    click.echo(f"embedded {n} titles")
+
+
+@main.command()
+@click.argument("ref")
+@click.option("--model", "model_name", default="content", show_default=True)
+@click.option("-k", default=10, show_default=True)
+def similar(ref: str, model_name: str, k: int) -> None:
+    """Print titles similar to REF, written as movie/603 or tv/1396."""
+    import nextwatch.features.content  # noqa: F401 - registers the content models
+    from nextwatch.evaluation.models import MODELS, Catalogue
+
+    media_type, tmdb_id = ref.split("/")
+    with db.connect(load_settings().database_url) as conn:
+        cat = Catalogue.load(conn)
+        seed = cat.by_key.get((media_type, int(tmdb_id)))
+        if seed is None:
+            raise click.ClickException(f"{ref} is not in the catalogue")
+        model = MODELS[model_name](cat, None, conn)
+        names = dict(conn.execute("SELECT id, name FROM title"))
+        for t in model.similar(seed, k):
+            mt, tid = cat.tmdb_key[t]
+            click.echo(f"{mt}/{tid}\t{names[t]}")
