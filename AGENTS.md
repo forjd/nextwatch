@@ -23,6 +23,10 @@ The plans expand on each part. In short:
 5. **Re-rank.** Diversity (MMR), popularity debiasing, and filtering by UK watch providers.
 6. **Evaluate.** Offline recall@k and nDCG on held-out MovieLens histories. Every change to ranking must be measured against this before it is kept.
 
+## Stack
+
+Python 3.12 for everything (ingest, features, training, API), managed with `uv`. The ranking and training libraries (`implicit`, LightGBM) are Python, so one language keeps it simple.
+
 ## Hosting
 
 - Develop locally with Docker Compose (Postgres with pgvector plus the app services) on the `ai-agent` VM.
@@ -30,7 +34,7 @@ The plans expand on each part. In short:
   - Each part is its own container: Postgres, the API/UI, and jobs (TMDB sync, model training) that run, finish and exit so they can be Railway cron services.
   - Use Railway's pgvector Postgres template, not the standard Postgres image.
   - Hobby volumes are capped at 5 GB per service. Keep the database under that: index only titles above a vote threshold, keep raw JSON lean, and train on MovieLens outside Postgres.
-  - All config comes from environment variables (`DATABASE_URL`, `TMDB_API_KEY`, ...). No hard-coded hosts or paths.
+  - All config comes from environment variables (`DATABASE_URL`, `TMDB_API_TOKEN`, ...). No hard-coded hosts or paths.
 
 ## Layout
 
