@@ -116,15 +116,15 @@ def train(data: Interactions, params: AlsParams | None = None) -> tuple[AlsModel
     params = params or AlsParams()
     matrix, items = user_items(data, params.alpha)
     log.info("ALS: %d users x %d items, %d ratings", *matrix.shape, matrix.nnz)
-    model = AlternatingLeastSquares(
-        factors=params.factors,
-        regularization=params.regularization,
-        alpha=1.0,  # confidence is already in the matrix
-        iterations=params.iterations,
-        random_state=params.seed,
-    )
     # implicit parallelises itself; a threaded BLAS underneath it only fights for the cores.
     with threadpool_limits(1, "blas"):
+        model = AlternatingLeastSquares(
+            factors=params.factors,
+            regularization=params.regularization,
+            alpha=1.0,  # confidence is already in the matrix
+            iterations=params.iterations,
+            random_state=params.seed,
+        )
         model.fit(matrix, show_progress=False)
     return AlsModel(items, np.asarray(model.item_factors, dtype=np.float32), params), model
 

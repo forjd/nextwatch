@@ -290,3 +290,52 @@ def train_als(factors: int, regularization: float, alpha: float, iterations: int
         version = models_store.save(conn, als.ARTIFACT, model.to_bytes(), meta)
         models_store.prune(conn, als.ARTIFACT)
     click.echo(f"saved als version {version}: {meta}")
+
+
+@train_group.command("ranker")
+@click.option("--users", "n_users", default=5000, show_default=True, help="Train users to sample.")
+@click.option("--valid-users", default=1000, show_default=True)
+def train_ranker(n_users: int, valid_users: int) -> None:
+    """LightGBM LambdaRank over candidate features (plan 07). Needs a trained ALS model."""
+    import time
+
+    import numpy as np
+
+    from nextwatch import models_store
+    from nextwatch.cf import als
+    from nextwatch.evaluation import data, harness
+    from nextwatch.features.content import features_for
+    from nextwatch.ranking import ranker
+    from nextwatch.ranking.signals import Signals
+
+    with db.connect(load_settings().database_url, autocommit=True) as conn:
+        started = time.monotonic()
+        interactions = data.load_interactions(DATA_DIR, data.movielens_to_title(conn))
+        train = data.train_interactions(interactions)
+        serving_als = als.load(conn)
+        # ALS for the ranker's own training users must not have seen their held-out ratings.
+        params = als.AlsParams(**models_store.load_latest(conn, als.ARTIFACT)[2]["params"])
+        history_als, _ = als.train(ranker.history_only(train), params)
+        content = features_for(conn)
+        s_train = Signals.load(conn, content, history_als)
+        s_valid = Signals.load(conn, content, serving_als)
+        movies = s_train.meta.is_tv == 0
+
+        train_users = data.eval_users(interactions, "train", n_users)
+        valid = data.eval_users(interactions, "validation", valid_users)
+        click.echo(f"building features for {len(train_users)} + {len(valid)} users")
+        ts = ranker.build_training_set(
+            s_train, train_users, movies, ranker.held_out_ratings(interactions, train_users)
+        )
+        vs = ranker.build_training_set(
+            s_valid, valid, movies, ranker.held_out_ratings(interactions, valid)
+        )
+        model = ranker.fit(ts, vs)
+        model.meta.update(
+            {"seconds": round(time.monotonic() - started, 1), "git": harness.git_sha(),
+             "positives_per_group": float(np.mean(ts.y > 0) * np.mean(ts.groups))}
+        )  # fmt: skip
+        version = models_store.save(conn, ranker.ARTIFACT, model.to_bytes(), model.meta)
+        models_store.prune(conn, ranker.ARTIFACT)
+    top = list(model.meta["importance_gain"].items())[:8]
+    click.echo(f"saved ranker version {version}; top features by gain: {top}")

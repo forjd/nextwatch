@@ -46,9 +46,13 @@ Per user–candidate pair. All are cheap to compute from data already in memory 
 
 - LightGBM with the `lambdarank` objective, optimising nDCG@20.
 - Training data: MovieLens train users, built exactly as [03](03-evaluation.md) does. Each user's history goes through steps 1–2. Held-out ratings are labels: 2 for ≥ 4.5 stars, 1 for 4.0, 0 otherwise or not rated. One query group per user.
+- The serving ALS model was trained on these users' full ratings, so its `cf_score` would leak their held-out labels. `train ranker` therefore trains a second ALS on each train user's history part only and uses it for the training features. Validation (early stopping) uses validation users and the serving ALS, as evaluation does.
+- Groups with no positive among their candidates are dropped: they carry no ranking signal.
+- LightGBM's native `lgb.train` API, not `LGBMRanker`, which would need scikit-learn.
 - MovieLens has no TV, so the model never sees a TV label. TV candidates rely on features that mean the same thing for both types (content, vibe, TMDB). Check TV with T3. If it suffers, train a second model with CF features masked on a random half of the users, so the model learns to rank without them.
 - Tune on validation and report on test. Saved as a `model_artifact` named `ranker`, with feature importances in `meta`.
-- Retrain whenever a feature changes. Locally, minutes.
+- Retrain whenever a feature changes (`nextwatch train ranker`). The artifact stores the feature list, and loading a ranker trained on a different list fails loudly. Locally, minutes.
+- Evaluate as `ranker` (pure ranking) and `ranker-rerank` (with step 4).
 
 ## 4. Re-rank
 

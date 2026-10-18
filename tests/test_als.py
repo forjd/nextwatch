@@ -9,18 +9,23 @@ from nextwatch.evaluation.models import Catalogue
 N_ITEMS = 60
 
 
-def clustered(n_users=300, seed=3) -> Interactions:
-    """Two taste groups: users like items 1-30 or 31-60, and rate the other group low."""
+def clustered(n_users=300, seed=3, mixed_time=False) -> Interactions:
+    """Two taste groups: users like items 1-30 or 31-60, and rate the other group low.
+
+    With mixed_time, each user rates in random order, so held-out ratings include positives.
+    """
     rng = np.random.default_rng(seed)
     rows = []
     for u in range(n_users):
         group = u % 2
         liked = rng.choice(30, size=12, replace=False) + 1 + 30 * group
         disliked = rng.choice(30, size=3, replace=False) + 1 + 30 * (1 - group)
+        times = rng.permutation(15) if mixed_time else np.arange(15)
         for i, t in enumerate(liked):
-            rows.append((u, int(t), 5.0, i))
+            rows.append((u, int(t), 5.0, int(times[i])))
         for i, t in enumerate(disliked):
-            rows.append((u, int(t), 1.0, 100 + i))
+            rows.append((u, int(t), 1.0, int(times[12 + i]) + (0 if mixed_time else 100)))
+    rows.sort(key=lambda r: (r[0], r[3]))
     u, t, r, ts = zip(*rows, strict=True)
     return Interactions(np.array(u, dtype=np.int32), np.array(t), np.array(r, np.float32),
                         np.array(ts))  # fmt: skip
