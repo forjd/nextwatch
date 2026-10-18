@@ -60,7 +60,9 @@ Python 3.12 for everything (ingest, features, training, API), managed with `uv`.
 | `src/nextwatch/http.py` | Shared HTTP settings (system CA store) |
 | `eval/golden.yaml` | Golden set for T3, written by the owner |
 | `tests/` | pytest. `conftest.py` has a fake TMDB API and a throwaway test database |
-| `compose.yaml` | Local Postgres with pgvector on `127.0.0.1:5433` |
+| `compose.yaml` | Local Postgres with pgvector on `127.0.0.1:5433`; `web` and `daily` behind the `app` and `jobs` profiles |
+| `Dockerfile` | One image for every service, embedding model baked in |
+| `.railway/railway.ts` | Railway project as code (TypeScript IaC; `npm install` in `.railway/` to plan) |
 | `scripts/init-test-db.sql` | Creates `nextwatch_test` on first start of the database |
 | `.github/workflows/ci.yml` | Lint and tests on the self-hosted `forjd` runner |
 | `docs/plans/` | Numbered plan files, one per area (`NN-topic.md`) |
@@ -93,6 +95,7 @@ uv run nextwatch eval compare <run> <run>
 uv run nextwatch queue        # what is left in the ingest queue
 uv run nextwatch db-size
 uv run nextwatch web          # app on 127.0.0.1:8000; needs APP_PASSWORD, SESSION_SECRET
+uv run nextwatch daily        # every daily step in order; what Railway's cron runs
 ```
 
 Before committing, run `uv run ruff check .`, `uv run ruff format --check .` and `uv run pytest -q`. Database tests need `TEST_DATABASE_URL` (in `.env.example`) and skip without it. Never point it at the real database: the tests drop the `public` schema.
@@ -108,6 +111,8 @@ Before committing, run `uv run ruff check .`, `uv run ruff format --check .` and
 - A new recommender must register in `MODELS` (and its module be imported in `registry.py`) and be compared with `eval compare` against the current best before it is kept.
 - Adding or removing a ranker feature means editing `FEATURES` in `ranking/features.py` and retraining; old ranker artifacts refuse to load.
 - To show the app to the owner, expose it with Tailscale Serve on its own port (not 443), e.g. `tailscale serve --bg --https=8443 http://127.0.0.1:8000`, and turn it off afterwards.
+- Backups go to the private repo `forjd/nextwatch-backups` when `BACKUP_GITHUB_TOKEN` is set.
+- The VM disk is small. After a local `docker build`, remove the image when done. Never prune Docker caches broadly: other projects share them.
 - Each plan owns its tables: add them in a new migration when that plan is built, not earlier.
 
 ## CI
@@ -132,7 +137,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): 
 | [06 — Collaborative filtering](docs/plans/06-collaborative-filtering.md) | Implicit ALS on MovieLens, owner fold-in, coverage gaps | Built and tested; training timed on real MovieLens. Eval waits for the backfill. |
 | [07 — Ranking](docs/plans/07-ranking.md) | Candidates, features, LambdaRank, re-ranking | Built and tested on synthetic data. Real training and latency wait for the backfill. |
 | [08 — App](docs/plans/08-app.md) | FastAPI and HTMX app, onboarding, feedback, access | Built and tested; runs against an empty catalogue. |
-| [09 — Deploy](docs/plans/09-deploy.md) | Docker Compose locally, Railway services, cost | `compose.yaml` for Postgres only |
+| [09 — Deploy](docs/plans/09-deploy.md) | Docker Compose locally, Railway services, cost | Built: image tested, IaC type-checked, backup upload tested. Not deployed. |
 
 Build in this order, except that 03 must exist before any of 04–07 is tuned.
 

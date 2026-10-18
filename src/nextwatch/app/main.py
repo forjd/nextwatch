@@ -371,10 +371,12 @@ def app_from_env() -> FastAPI:
     from nextwatch.features.embed import fastembed_embedder
 
     cfg = load_config()
-    data_dir = Path(os.environ.get("DATA_DIR", "data"))
+    models_dir = Path(
+        os.environ.get("MODELS_DIR", str(Path(os.environ.get("DATA_DIR", "data")) / "models"))
+    )
     return create_app(
         cfg.database_url,
         os.environ.get("APP_PASSWORD", ""),
         os.environ.get("SESSION_SECRET", ""),
-        embedder_factory=lambda: fastembed_embedder(data_dir / "models"),
+        embedder_factory=lambda: fastembed_embedder(models_dir),
     )

@@ -4,13 +4,17 @@ Rows are keyed by (media_type, tmdb_id), not title.id, so a backup still applies
 catalogue is rebuilt from scratch.
 """
 
+import base64
 import datetime as dt
 import gzip
 import json
 import logging
 from typing import Any
 
+import httpx
 from psycopg import Connection
+
+from nextwatch.http import SSL_CONTEXT
 
 log = logging.getLogger(__name__)
 
@@ -107,3 +111,45 @@ def import_data(conn: Connection, data: dict[str, Any]) -> tuple[int, int, int]:
     if skipped:
         log.warning("skipped %d rows for titles not in the catalogue", skipped)
     return n_ratings, n_events, skipped
+
+
+GITHUB_API = "https://api.github.com"
+BACKUP_PATH = "owner-data.json.gz"
+
+
+def upload_github(
+    blob: bytes,
+    repo: str,
+    token: str,
+    path: str = BACKUP_PATH,
+    transport: httpx.BaseTransport | None = None,
+) -> bool:
+    """Write the backup to a GitHub repo through the contents API. Git history keeps old ones.
+
+    Returns False without writing when the content is unchanged.
+    """
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    url = f"{GITHUB_API}/repos/{repo}/contents/{path}"
+    with httpx.Client(headers=headers, timeout=30, transport=transport, verify=SSL_CONTEXT) as http:
+        current = http.get(url)
+        sha = None
+        if current.status_code == 200:
+            body = current.json()
+            sha = body["sha"]
+            if base64.b64decode(body.get("content", "")) == blob:
+                log.info("backup unchanged; not writing")
+                return False
+        elif current.status_code != 404:
+            current.raise_for_status()
+        payload = {
+            "message": f"backup: owner data {dt.date.today().isoformat()}",
+            "content": base64.b64encode(blob).decode(),
+            **({"sha": sha} if sha else {}),
+        }
+        http.put(url, json=payload).raise_for_status()
+    log.info("backup written to %s/%s", repo, path)
+    return True

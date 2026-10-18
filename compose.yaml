@@ -1,3 +1,5 @@
+# Local development. `docker compose up -d` starts only the database; the app and the
+# daily job are behind profiles so the CLI can run against the same database from the host.
 services:
   db:
     image: pgvector/pgvector:pg17
@@ -16,5 +18,36 @@ services:
       interval: 5s
       retries: 10
 
+  # docker compose --profile app up -d --build
+  web:
+    profiles: [app]
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://nextwatch:nextwatch@db:5432/nextwatch
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 30s
+
+  # docker compose --profile jobs run --rm daily
+  daily:
+    profiles: [jobs]
+    build: .
+    command: ["nextwatch", "daily"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://nextwatch:nextwatch@db:5432/nextwatch
+    volumes:
+      - jobdata:/data
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   db:
+  jobdata:

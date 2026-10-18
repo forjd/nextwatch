@@ -1,6 +1,7 @@
 """The `nextwatch` command."""
 
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -9,7 +10,10 @@ import click
 from nextwatch import db
 from nextwatch.config import load_settings
 
-DATA_DIR = Path("data")
+# Downloads, exports and caches. /data in the Docker image.
+DATA_DIR = Path(os.environ.get("DATA_DIR", "data"))
+# Embedding model files. Baked into the Docker image at /opt/models.
+MODELS_DIR = Path(os.environ.get("MODELS_DIR", str(DATA_DIR / "models")))
 
 
 @click.group()
@@ -103,14 +107,25 @@ def normalise() -> None:
     default=DATA_DIR / "backups" / "owner-data.json.gz",
 )
 def export_cmd(output: Path) -> None:
-    """Write ratings and events to a gzipped JSON file."""
+    """Write ratings and events to a gzipped JSON file, and to GitHub if configured."""
+    _export(output)
+
+
+def _export(output: Path) -> None:
     from nextwatch import backup
 
     with db.connect(load_settings().database_url) as conn:
         data = backup.export_data(conn)
+    blob = backup.dumps(data)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_bytes(backup.dumps(data))
+    output.write_bytes(blob)
     click.echo(f"wrote {len(data['ratings'])} ratings, {len(data['events'])} events to {output}")
+    token = os.environ.get("BACKUP_GITHUB_TOKEN")
+    if token:
+        repo = os.environ.get("BACKUP_GITHUB_REPO", "forjd/nextwatch-backups")
+        backup.upload_github(blob, repo, token)
+    else:
+        logging.getLogger(__name__).info("BACKUP_GITHUB_TOKEN not set; local file only")
 
 
 @main.command("import-backup")
@@ -213,7 +228,7 @@ def embed() -> None:
     """Embed titles whose text changed (plan 04). Downloads the model on first run."""
     from nextwatch.features import embed as e
 
-    embedder = e.fastembed_embedder(DATA_DIR / "models")
+    embedder = e.fastembed_embedder(MODELS_DIR)
     with db.connect(load_settings().database_url, autocommit=True) as conn:
         n = e.embed_titles(conn, embedder)
         n_feel = e.embed_titles(conn, embedder, e.FEEL_MODEL)
@@ -353,3 +368,58 @@ def web(host: str, port: int) -> None:
     uvicorn.run(
         "nextwatch.app.main:app_from_env", factory=True, host=host, port=port, proxy_headers=True
     )
+
+
+@main.command()
+def daily() -> None:
+    """The daily job (plan 09): sync, refresh, normalise, embed, vibes, export.
+
+    Every step runs even if an earlier one fails; each is idempotent, so the next run catches
+    up. Exits non-zero if any step failed.
+    """
+    from nextwatch import normalise as n
+    from nextwatch.features import embed as e
+    from nextwatch.ingest import jobs
+
+    log = logging.getLogger("nextwatch.daily")
+    settings = load_settings()
+
+    def run_normalise() -> None:
+        with db.connect(settings.database_url, autocommit=True) as conn:
+            n.normalise(conn)
+
+    def run_embed() -> None:
+        embedder = e.fastembed_embedder(MODELS_DIR)
+        with db.connect(settings.database_url, autocommit=True) as conn:
+            e.embed_titles(conn, embedder)
+            e.embed_titles(conn, embedder, e.FEEL_MODEL)
+
+    def run_vibes() -> None:
+        if not settings.openrouter_api_key:
+            log.info("OPENROUTER_API_KEY not set; skipping vibes")
+            return
+        from nextwatch.vibes import job
+
+        with db.connect(settings.database_url, autocommit=True) as conn:
+            job.run(conn, settings)
+
+    steps = [
+        ("sync", lambda: jobs.sync(settings, DATA_DIR)),
+        ("refresh", lambda: jobs.refresh(settings)),
+        ("normalise", run_normalise),
+        ("embed", run_embed),
+        ("vibes", run_vibes),
+        ("export", lambda: _export(DATA_DIR / "backups" / "owner-data.json.gz")),
+    ]
+    failed = []
+    for name, step in steps:
+        log.info("step %s", name)
+        try:
+            step()
+        except Exception:  # noqa: BLE001 - keep going; the next run retries
+            log.exception("step %s failed", name)
+            failed.append(name)
+    with db.connect(settings.database_url) as conn:
+        db.log_db_size(conn)
+    if failed:
+        raise click.ClickException(f"failed steps: {', '.join(failed)}")

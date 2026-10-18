@@ -6,9 +6,8 @@ from nextwatch.normalise import normalise
 from tests.payloads import movie_payload, tv_payload
 from tests.test_normalise import store
 
-pytestmark = pytest.mark.db
 
-
+@pytest.mark.db
 def test_export_import_round_trip(conn):
     store(conn, "movie", 603, movie_payload())
     store(conn, "tv", 1396, tv_payload())
@@ -32,3 +31,35 @@ def test_export_import_round_trip(conn):
     ).fetchone()
     assert row[0] == 603 and float(row[1]) == 4.5
     assert backup.export_data(conn) == backup.loads(blob)
+
+
+def test_upload_github_writes_only_changes():
+    import base64
+    import json
+
+    import httpx
+
+    stored: dict = {}
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.method)
+        assert request.headers["Authorization"] == "Bearer tok"
+        assert request.url.path == "/repos/forjd/nextwatch-backups/contents/owner-data.json.gz"
+        if request.method == "GET":
+            if not stored:
+                return httpx.Response(404)
+            return httpx.Response(200, json={"sha": "abc", "content": stored["content"]})
+        body = json.loads(request.content)
+        assert body.get("sha") == ("abc" if stored else None)
+        stored["content"] = body["content"]
+        return httpx.Response(201, json={})
+
+    t = httpx.MockTransport(handler)
+    blob = backup.dumps({"version": 1, "ratings": [], "events": []})
+    assert backup.upload_github(blob, "forjd/nextwatch-backups", "tok", transport=t)
+    assert base64.b64decode(stored["content"]) == blob
+    assert not backup.upload_github(blob, "forjd/nextwatch-backups", "tok", transport=t)
+    other = backup.dumps({"version": 1, "ratings": [{"x": 1}], "events": []})
+    assert backup.upload_github(other, "forjd/nextwatch-backups", "tok", transport=t)
+    assert calls == ["GET", "PUT", "GET", "GET", "PUT"]
