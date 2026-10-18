@@ -51,6 +51,22 @@ Update this table when you add top-level paths.
 
 Use [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): summary`, for example `docs(plans): add ingest plan` or `feat(ingest): fetch TMDB daily exports`.
 
+## Plans
+
+| Plan | Covers |
+| --- | --- |
+| [01 — Ingest](docs/plans/01-ingest.md) | TMDB exports, two-pass fetch, daily sync |
+| [02 — Storage](docs/plans/02-storage.md) | Postgres schema, normalise, size budget, backups |
+| [03 — Evaluation](docs/plans/03-evaluation.md) | MovieLens splits, metrics, golden set, harness |
+| [04 — Content similarity](docs/plans/04-content-similarity.md) | TF-IDF feature families, embeddings, profiles |
+| [05 — Vibe tags](docs/plans/05-vibe-tags.md) | LLM tags from a fixed vocabulary, through OpenRouter |
+| [06 — Collaborative filtering](docs/plans/06-collaborative-filtering.md) | Implicit ALS on MovieLens, owner fold-in, coverage gaps |
+| [07 — Ranking](docs/plans/07-ranking.md) | Candidates, features, LambdaRank, re-ranking |
+| [08 — App](docs/plans/08-app.md) | FastAPI and HTMX app, onboarding, feedback, access |
+| [09 — Deploy](docs/plans/09-deploy.md) | Docker Compose locally, Railway services, cost |
+
+Build in this order, except that 03 must exist before any of 04–07 is tuned.
+
 ## Writing plans
 
 - One file per area, numbered in the order it should be built: `01-ingest.md`, `02-storage.md`, and so on.
