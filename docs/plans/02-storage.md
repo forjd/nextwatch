@@ -8,7 +8,7 @@ One Postgres database holds the catalogue, the features the engine needs at requ
 
 - **Postgres 17 with `pgvector`.** Locally the `pgvector/pgvector:pg17` image. On Railway, the pgvector template (the standard Railway image has no pgvector).
 - **No ORM.** `psycopg` 3 with plain SQL. The queries are few and specific, and the bulk loads want `COPY`.
-- **Migrations are numbered SQL files** in `migrations/` (`0001_ingest.sql`, ...), applied in order by a small `nextwatch migrate` command that records them in `schema_migration`. Forward only.
+- **Migrations are numbered SQL files** in `src/nextwatch/migrations/` (`0001_ingest.sql`, ...), applied in order by a small `nextwatch migrate` command that records them in `schema_migration`. Forward only.
 - **Raw and normalised data are separate.** Ingest owns `tmdb_title` ([01](01-ingest.md)). A `normalise` step rebuilds the tables below from it. Normalised tables can always be dropped and rebuilt from raw.
 - **MovieLens stays out of Postgres** except the ID mapping. The 32M ratings live as Parquet in `data/movielens/` and only the training job reads them ([06](06-collaborative-filtering.md)).
 - **Trained models are rows**, not files, so there is no bucket or shared volume to manage: `model_artifact` holds a `bytea` blob per model version.

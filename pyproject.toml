@@ -1,0 +1,40 @@
+[project]
+name = "nextwatch"
+version = "0.1.0"
+description = "Personal movie and TV recommendation engine built on a local copy of TMDB."
+license = "MIT"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "click>=8.1",
+    "httpx>=0.28",
+    "psycopg[binary]>=3.2",
+    "psycopg-pool>=3.2",
+    "python-dotenv>=1.0",
+]
+
+[project.scripts]
+nextwatch = "nextwatch.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "ruff>=0.9",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+markers = ["db: needs a Postgres database (TEST_DATABASE_URL)"]

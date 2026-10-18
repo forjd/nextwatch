@@ -2,7 +2,7 @@
 
 `nextwatch` is a personal movie and TV recommendation engine. It keeps a local copy of TMDB's catalogue and ranks titles with a hybrid of content similarity, collaborative filtering and a learned ranker.
 
-The project is in the planning stage. There is no code yet. Plans live in `docs/plans/` and are the source of truth until code exists.
+Plans live in `docs/plans/`. Code is being built plan by plan; the status column in the Plans table says how far each one is. Where code and a plan disagree, fix one of them in the same change.
 
 ## Scope and constraints
 
@@ -40,6 +40,16 @@ Python 3.12 for everything (ingest, features, training, API), managed with `uv`.
 
 | Path | What it is |
 | --- | --- |
+| `src/nextwatch/cli.py` | The `nextwatch` command (click) |
+| `src/nextwatch/config.py` | Settings from environment variables and `.env` |
+| `src/nextwatch/db.py` | Connections, migration runner, `db-size` |
+| `src/nextwatch/migrations/` | Numbered SQL migrations, forward only |
+| `src/nextwatch/tmdb.py` | Async TMDB client with a shared rate limit |
+| `src/nextwatch/ingest/` | Exports, payload trimming, queue, workers and the ingest jobs |
+| `tests/` | pytest. `conftest.py` has a fake TMDB API and a throwaway test database |
+| `compose.yaml` | Local Postgres with pgvector on `127.0.0.1:5433` |
+| `scripts/init-test-db.sql` | Creates `nextwatch_test` on first start of the database |
+| `.github/workflows/ci.yml` | Lint and tests on the self-hosted `forjd` runner |
 | `docs/plans/` | Numbered plan files, one per area (`NN-topic.md`) |
 | `AGENTS.md` | This file |
 | `CLAUDE.md` | Just `@AGENTS.md` |
@@ -47,23 +57,52 @@ Python 3.12 for everything (ingest, features, training, API), managed with `uv`.
 
 Update this table when you add top-level paths.
 
+## Commands
+
+```sh
+cp .env.example .env          # then set TMDB_API_TOKEN
+docker compose up -d --wait   # Postgres on 127.0.0.1:5433
+uv sync
+uv run nextwatch migrate
+uv run nextwatch backfill     # first load; safe to stop and rerun
+uv run nextwatch sync         # daily
+uv run nextwatch refresh      # daily, after sync
+uv run nextwatch queue        # what is left in the ingest queue
+uv run nextwatch db-size
+```
+
+Before committing, run `uv run ruff check .`, `uv run ruff format --check .` and `uv run pytest -q`. Database tests need `TEST_DATABASE_URL` (in `.env.example`) and skip without it. Never point it at the real database: the tests drop the `public` schema.
+
+## Conventions
+
+- SQL lives next to the code that runs it, as plain strings with `%s` parameters. No ORM.
+- Every job is idempotent and safe to kill: state is in Postgres, not in memory.
+- Ingest jobs take a Postgres advisory lock, so only one runs at a time.
+- Tests never call the real TMDB API. Add behaviour to `FakeTmdb` instead.
+
+## CI
+
+- Runs on the self-hosted `forjd` runner. The repo is public, so keep the `if:` guard that stops fork PRs running on it.
+- Pin every action to a full commit SHA with a `# vX.Y.Z` comment. Dependabot bumps them monthly.
+- Keep `permissions: contents: read`, `persist-credentials: false` and caching off: the runner is shared and persistent.
+
 ## Commits
 
 Use [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): summary`, for example `docs(plans): add ingest plan` or `feat(ingest): fetch TMDB daily exports`.
 
 ## Plans
 
-| Plan | Covers |
-| --- | --- |
-| [01 — Ingest](docs/plans/01-ingest.md) | TMDB exports, two-pass fetch, daily sync |
-| [02 — Storage](docs/plans/02-storage.md) | Postgres schema, normalise, size budget, backups |
-| [03 — Evaluation](docs/plans/03-evaluation.md) | MovieLens splits, metrics, golden set, harness |
-| [04 — Content similarity](docs/plans/04-content-similarity.md) | TF-IDF feature families, embeddings, profiles |
-| [05 — Vibe tags](docs/plans/05-vibe-tags.md) | LLM tags from a fixed vocabulary, through OpenRouter |
-| [06 — Collaborative filtering](docs/plans/06-collaborative-filtering.md) | Implicit ALS on MovieLens, owner fold-in, coverage gaps |
-| [07 — Ranking](docs/plans/07-ranking.md) | Candidates, features, LambdaRank, re-ranking |
-| [08 — App](docs/plans/08-app.md) | FastAPI and HTMX app, onboarding, feedback, access |
-| [09 — Deploy](docs/plans/09-deploy.md) | Docker Compose locally, Railway services, cost |
+| Plan | Covers | Status |
+| --- | --- | --- |
+| [01 — Ingest](docs/plans/01-ingest.md) | TMDB exports, two-pass fetch, daily sync | Built, tested against a fake API. Not yet run against real TMDB. |
+| [02 — Storage](docs/plans/02-storage.md) | Postgres schema, normalise, size budget, backups | Migration runner only |
+| [03 — Evaluation](docs/plans/03-evaluation.md) | MovieLens splits, metrics, golden set, harness | Not started |
+| [04 — Content similarity](docs/plans/04-content-similarity.md) | TF-IDF feature families, embeddings, profiles | Not started |
+| [05 — Vibe tags](docs/plans/05-vibe-tags.md) | LLM tags from a fixed vocabulary, through OpenRouter | Not started |
+| [06 — Collaborative filtering](docs/plans/06-collaborative-filtering.md) | Implicit ALS on MovieLens, owner fold-in, coverage gaps | Not started |
+| [07 — Ranking](docs/plans/07-ranking.md) | Candidates, features, LambdaRank, re-ranking | Not started |
+| [08 — App](docs/plans/08-app.md) | FastAPI and HTMX app, onboarding, feedback, access | Not started |
+| [09 — Deploy](docs/plans/09-deploy.md) | Docker Compose locally, Railway services, cost | `compose.yaml` for Postgres only |
 
 Build in this order, except that 03 must exist before any of 04–07 is tuned.
 

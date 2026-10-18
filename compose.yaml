@@ -1,0 +1,20 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: nextwatch
+      POSTGRES_PASSWORD: nextwatch
+      POSTGRES_DB: nextwatch
+    # 5432 is often taken on the dev VM; bind to localhost only.
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - db:/var/lib/postgresql/data
+      - ./scripts/init-test-db.sql:/docker-entrypoint-initdb.d/init-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextwatch"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  db:
