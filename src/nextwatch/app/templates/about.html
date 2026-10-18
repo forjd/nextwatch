@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}About · nextwatch{% endblock %}
+{% block main %}
+<h1>About</h1>
+<p>nextwatch is a personal recommendation engine. Source: <a href="https://github.com/forjd/nextwatch">github.com/forjd/nextwatch</a>.</p>
+<p><img src="/static/tmdb.svg" alt="TMDB" height="20"></p>
+<p>This product uses the TMDB API but is not endorsed or certified by TMDB. Streaming availability is provided by JustWatch through TMDB.</p>
+<h2>Models</h2>
+<ul>{% for k, v in status.items() %}<li>{{ k }}: {{ "loaded" if v else "missing" }}</li>{% endfor %}</ul>
+{% endblock %}

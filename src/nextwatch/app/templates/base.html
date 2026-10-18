@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}nextwatch{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/">nextwatch</a>
+    <nav>
+      <a href="/for-you">For you</a>
+      <a href="/mood">Mood</a>
+      <a href="/search">Search</a>
+      <a href="/watchlist">Watchlist</a>
+      <a href="/ratings">Ratings</a>
+      <a href="/settings">Settings</a>
+    </nav>
+  </header>
+  <main>{% block main %}{% endblock %}</main>
+  <footer>
+    <a href="https://www.themoviedb.org/"><img src="/static/tmdb.svg" alt="TMDB" height="12"></a>
+    This product uses the TMDB API but is not endorsed or certified by TMDB.
+    Streaming data powered by JustWatch. <a href="/about">About</a>
+  </footer>
+</body>
+</html>

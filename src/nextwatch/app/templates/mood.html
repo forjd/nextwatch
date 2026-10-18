@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Mood · nextwatch{% endblock %}
+{% block main %}
+<h1>What are you in the mood for?</h1>
+{% include "_filters.html" %}
+{% if q %}{% with empty="Nothing matched. Mood search needs vibe tags or embeddings." %}{% include "_grid.html" %}{% endwith %}{% endif %}
+{% endblock %}

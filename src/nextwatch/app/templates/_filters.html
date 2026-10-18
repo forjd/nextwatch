@@ -1,0 +1,19 @@
+<form class="filters" method="get">
+  {% if q is defined %}<input type="search" name="q" value="{{ q }}" placeholder="something cosy and funny, under 2 hours" aria-label="Mood">{% endif %}
+  <select name="type" aria-label="Type">
+    <option value="">Movies and TV</option>
+    <option value="movie" {% if f.media_type == 'movie' %}selected{% endif %}>Movies</option>
+    <option value="tv" {% if f.media_type == 'tv' %}selected{% endif %}>TV</option>
+  </select>
+  <select name="runtime" aria-label="Max runtime">
+    <option value="">Any length</option>
+    {% for m in (60, 90, 120, 150) %}<option value="{{ m }}" {% if f.max_runtime == m %}selected{% endif %}>Under {{ m }} min</option>{% endfor %}
+  </select>
+  <select name="attention" aria-label="Attention">
+    <option value="">Any focus</option>
+    {% for a in attention_levels %}<option value="{{ a }}" {% if f.attention == a %}selected{% endif %}>Up to {{ a }}</option>{% endfor %}
+  </select>
+  <label><input type="checkbox" name="services" value="1" {% if f.on_my_services %}checked{% endif %}> On my services</label>
+  <label><input type="checkbox" name="no_gore" value="1" {% if f.no_gore %}checked{% endif %}> No gore</label>
+  <button type="submit">{{ "Search" if q is defined else "Apply" }}</button>
+</form>

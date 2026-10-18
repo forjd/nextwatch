@@ -339,3 +339,17 @@ def train_ranker(n_users: int, valid_users: int) -> None:
         models_store.prune(conn, ranker.ARTIFACT)
     top = list(model.meta["importance_gain"].items())[:8]
     click.echo(f"saved ranker version {version}; top features by gain: {top}")
+
+
+@main.command()
+@click.option("--host", default="127.0.0.1", show_default=True)
+@click.option("--port", default=8000, show_default=True, envvar="PORT")
+def web(host: str, port: int) -> None:
+    """Run the web app (plan 08). Needs APP_PASSWORD and SESSION_SECRET."""
+    import uvicorn
+    from dotenv import load_dotenv
+
+    load_dotenv()
+    uvicorn.run(
+        "nextwatch.app.main:app_from_env", factory=True, host=host, port=port, proxy_headers=True
+    )

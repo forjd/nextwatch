@@ -1,0 +1,3 @@
+<div class="grid">
+  {% for c in items %}{% include "_card.html" %}{% else %}<p class="empty">{{ empty or "Nothing here yet." }}</p>{% endfor %}
+</div>

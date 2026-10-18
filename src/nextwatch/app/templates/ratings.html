@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Ratings · nextwatch{% endblock %}
+{% block main %}
+<h1>Ratings</h1>
+<p><a href="/import">Import from Letterboxd or IMDb</a></p>
+{% with empty="No ratings yet." %}{% include "_grid.html" %}{% endwith %}
+{% endblock %}

@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Start · nextwatch{% endblock %}
+{% block main %}
+<h1>Rate what you have seen</h1>
+<p>You have rated {{ rated }}. Thirty is enough to start; more is better. Skip anything you have not seen.
+  <a href="/start">Next batch</a> · <a href="/import">Import instead</a> · <a href="/for-you">Go to For you</a></p>
+{% with source="onboarding", skip=True, empty="No titles to rate. The catalogue may be empty." %}{% include "_grid.html" %}{% endwith %}
+{% endblock %}

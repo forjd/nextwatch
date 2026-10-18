@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ t.name }} · nextwatch{% endblock %}
+{% block main %}
+<section class="detail">
+  {% if t.poster %}<img class="detail-poster" src="{{ poster_url }}{{ t.poster }}" alt="">{% endif %}
+  <div>
+    <h1>{{ t.name }} <span class="year">{{ t.year or '' }}</span></h1>
+    <p class="facts">
+      {{ "TV series" if t.media_type == 'tv' else "Movie" }}
+      {% if t.seasons %} · {{ t.seasons }} season{{ 's' if t.seasons != 1 }}{% endif %}
+      {% if t.runtime %} · {{ t.runtime }} min{% endif %}
+      {% if t.cert %} · {{ t.cert }}{% endif %}
+      {% if t.vote_average %} · TMDB {{ '%.1f'|format(t.vote_average) }} ({{ t.vote_count }}){% endif %}
+      {% if t.genres %} · {{ t.genres|join(', ') }}{% endif %}
+    </p>
+    {% if t.tagline %}<p class="tagline">{{ t.tagline }}</p>{% endif %}
+    {% if t.overview %}<p>{{ t.overview }}</p>{% endif %}
+    {% if t.vibe %}
+      <p class="feel">“{{ t.vibe.feel }}”</p>
+      <p class="tags">
+        {% for x in t.vibe.tags.tone %}<span>{{ x.value }}</span>{% endfor %}
+        <span>{{ t.vibe.tags.pacing }}</span><span>{{ t.vibe.tags.attention }}</span>
+        {% for x in t.vibe.tags.themes %}<span>{{ x }}</span>{% endfor %}
+        {% for x in t.vibe.tags.form %}<span>{{ x }}</span>{% endfor %}
+      </p>
+    {% endif %}
+    {% if t.providers %}<p><strong>Watch in the UK:</strong>
+      {% for name, kind in t.providers %}{{ name }} ({{ kind }}){{ ", " if not loop.last }}{% endfor %}</p>
+    {% else %}<p class="muted">Not on a UK service we know of.</p>{% endif %}
+    {% if t.crew %}<p>{% for name, job in t.crew %}{{ job }}: {{ name }}{{ "; " if not loop.last }}{% endfor %}</p>{% endif %}
+    {% if t.cast %}<p class="muted">{% for name, ch in t.cast %}{{ name }}{{ ", " if not loop.last }}{% endfor %}</p>{% endif %}
+    <p><a href="https://www.themoviedb.org/{{ t.media_type }}/{{ t.tmdb_id }}">TMDB page</a></p>
+    {% set c = {"id": t.id, "name": t.name, "score": t.score, "watchlisted": t.watchlisted, "media_type": t.media_type, "poster": none, "year": none, "because": none} %}
+    <div class="detail-actions">{% include "_card.html" %}</div>
+  </div>
+</section>
+<h2>More like this</h2>
+{% with items=similar, empty="No similar titles yet." %}{% include "_grid.html" %}{% endwith %}
+{% endblock %}

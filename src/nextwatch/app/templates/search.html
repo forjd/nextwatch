@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Search · nextwatch{% endblock %}
+{% block main %}
+<h1>Search</h1>
+<form class="filters" method="get">
+  <input type="search" name="q" value="{{ q }}" placeholder="Title" aria-label="Title" autofocus
+         hx-get="/search" hx-trigger="input changed delay:300ms" hx-target="#results" hx-swap="innerHTML">
+</form>
+<div id="results">{% if q %}{% include "_grid.html" %}{% endif %}</div>
+{% endblock %}

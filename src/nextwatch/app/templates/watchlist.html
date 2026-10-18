@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Watchlist · nextwatch{% endblock %}
+{% block main %}
+<h1>Watchlist</h1>
+{% with empty="Nothing saved yet." %}{% include "_grid.html" %}{% endwith %}
+{% endblock %}

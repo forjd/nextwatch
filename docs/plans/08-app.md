@@ -9,14 +9,16 @@ A small web app, mostly used on a phone, where the owner gets recommendations, r
 - **FastAPI** with **Jinja2** templates and **HTMX**. Server-rendered, one language, no JavaScript build. HTMX handles the rate-without-reload interactions.
 - Mobile first. Poster grid, big tap targets.
 - Posters load directly from TMDB's image CDN (`https://image.tmdb.org/t/p/w342{poster_path}`). No images stored.
-- The app loads the sparse matrices ([04](04-content-similarity.md)), ALS factors ([06](06-collaborative-filtering.md)), ranker ([07](07-ranking.md)) and embedding model at start, and reloads them when a newer `model_artifact` or `sync` appears.
+- The app loads the sparse matrices ([04](04-content-similarity.md)), ALS factors ([06](06-collaborative-filtering.md)) and ranker ([07](07-ranking.md)) on the first request, and checks every 5 minutes whether the catalogue, embeddings, vibes or models changed; if so it reloads. The embedding model loads only on the first mood search.
+- It uses the best model available: the ranker, else content similarity (with vibes if present), else popularity. An empty catalogue still serves pages, with a note.
+- HTMX is vendored in `static/` (no CDN). `nextwatch web` runs uvicorn.
 
 ## Getting started with no history
 
 The engine knows nothing about the owner at first. Two ways in, both on the first run and always available later:
 
-1. **Quick rate.** A grid of ~60 well-known titles, chosen to spread across genres, decades, movies and TV. Tap a rating or skip. After every 10 ratings the next 10 are picked to fill the gaps in what we know (active learning: titles the current profile is most unsure about). 30 ratings is enough to start.
-2. **Import.** Upload a Letterboxd export (`ratings.csv`) or an IMDb ratings export. Match by IMDb ID first, then by title and year. Show the unmatched ones.
+1. **Quick rate.** A grid of ~60 well-known titles, chosen to spread across genres, decades, movies and TV. Tap a rating or skip. Each batch of 12 is picked from the 800 most-voted titles to fill the gaps in what we know: genres and decades not yet rated, with a balance of movies and TV. 30 ratings is enough to start.
+2. **Import.** Upload a Letterboxd export (`ratings.csv`) or an IMDb ratings export. IMDb rows match by IMDb ID; Letterboxd rows (which have no IMDb ID) match movies by title and year, allowing a year either side. Show the unmatched ones. An import never overwrites a rating made in the app.
 
 ## Pages
 

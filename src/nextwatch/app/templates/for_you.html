@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}For you · nextwatch{% endblock %}
+{% block main %}
+<h1>For you</h1>
+{% if not status.catalogue %}<p class="note">The catalogue is empty. Run <code>nextwatch backfill</code> and <code>nextwatch normalise</code>.</p>
+{% elif not status.ranker %}<p class="note">No ranker yet: ranked by content similarity{% if not status.embeddings %} (no embeddings either){% endif %}.</p>{% endif %}
+{% set q = undefined %}
+{% include "_filters.html" %}
+{% with empty="No recommendations. Rate a few titles on the Start page." %}{% include "_grid.html" %}{% endwith %}
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Import · nextwatch{% endblock %}
+{% block main %}
+<h1>Import ratings</h1>
+<p>Upload <code>ratings.csv</code> from a Letterboxd export, or the ratings CSV from IMDb. Imported ratings never overwrite ones you made here.</p>
+<form method="post" action="/import" enctype="multipart/form-data" class="filters">
+  <input type="file" name="file" accept=".csv,text/csv" required>
+  <button type="submit">Import</button>
+</form>
+{% if error %}<p class="note">{{ error }}</p>{% endif %}
+{% if result %}
+<p>{{ result.kind|capitalize }}: matched {{ result.matched }} of {{ result.total }}.</p>
+{% if result.unmatched %}<details><summary>{{ result.unmatched|length }} not matched</summary><ul>{% for u in result.unmatched %}<li>{{ u }}</li>{% endfor %}</ul></details>{% endif %}
+{% endif %}
+{% endblock %}
