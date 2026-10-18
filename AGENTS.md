@@ -46,6 +46,8 @@ Python 3.12 for everything (ingest, features, training, API), managed with `uv`.
 | `src/nextwatch/migrations/` | Numbered SQL migrations, forward only |
 | `src/nextwatch/tmdb.py` | Async TMDB client with a shared rate limit |
 | `src/nextwatch/ingest/` | Exports, payload trimming, queue, workers and the ingest jobs |
+| `src/nextwatch/normalise.py` | Builds the catalogue tables from `tmdb_title` payloads |
+| `src/nextwatch/backup.py` | Export and import of the owner's ratings and events |
 | `tests/` | pytest. `conftest.py` has a fake TMDB API and a throwaway test database |
 | `compose.yaml` | Local Postgres with pgvector on `127.0.0.1:5433` |
 | `scripts/init-test-db.sql` | Creates `nextwatch_test` on first start of the database |
@@ -67,6 +69,8 @@ uv run nextwatch migrate
 uv run nextwatch backfill     # first load; safe to stop and rerun
 uv run nextwatch sync         # daily
 uv run nextwatch refresh      # daily, after sync
+uv run nextwatch normalise    # after sync/refresh: rebuild changed titles
+uv run nextwatch export       # owner data to data/backups/owner-data.json.gz
 uv run nextwatch queue        # what is left in the ingest queue
 uv run nextwatch db-size
 ```
@@ -78,7 +82,8 @@ Before committing, run `uv run ruff check .`, `uv run ruff format --check .` and
 - SQL lives next to the code that runs it, as plain strings with `%s` parameters. No ORM.
 - Every job is idempotent and safe to kill: state is in Postgres, not in memory.
 - Ingest jobs take a Postgres advisory lock, so only one runs at a time.
-- Tests never call the real TMDB API. Add behaviour to `FakeTmdb` instead.
+- Tests never call the real TMDB API. Add behaviour to `FakeTmdb` instead. Payload fixtures shaped like real responses live in `tests/payloads.py`.
+- Each plan owns its tables: add them in a new migration when that plan is built, not earlier.
 
 ## CI
 
@@ -95,7 +100,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): 
 | Plan | Covers | Status |
 | --- | --- | --- |
 | [01 — Ingest](docs/plans/01-ingest.md) | TMDB exports, two-pass fetch, daily sync | Built, tested against a fake API. Not yet run against real TMDB. |
-| [02 — Storage](docs/plans/02-storage.md) | Postgres schema, normalise, size budget, backups | Migration runner only |
+| [02 — Storage](docs/plans/02-storage.md) | Postgres schema, normalise, size budget, backups | Built and tested. GitHub upload of backups is part of 09. |
 | [03 — Evaluation](docs/plans/03-evaluation.md) | MovieLens splits, metrics, golden set, harness | Not started |
 | [04 — Content similarity](docs/plans/04-content-similarity.md) | TF-IDF feature families, embeddings, profiles | Not started |
 | [05 — Vibe tags](docs/plans/05-vibe-tags.md) | LLM tags from a fixed vocabulary, through OpenRouter | Not started |
