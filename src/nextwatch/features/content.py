@@ -24,15 +24,19 @@ NEUTRAL = 3.0
 class ContentFeatures:
     sparse: sparse.SparseIndex
     dense: np.ndarray | None  # rows aligned to sparse.ids, unit length; None if not embedded
+    feel: np.ndarray | None = None  # embeddings of the vibe feel sentence, same alignment
 
     @classmethod
     def load(cls, conn: Connection) -> "ContentFeatures":
         idx = sparse.build(conn)
-        dense = embed.load_matrix(conn, idx.ids)
-        if not dense.any():
-            log.warning("no %s embeddings; dense similarity is off", embed.MODEL)
-            dense = None
-        return cls(idx, dense)
+        mats = []
+        for model in (embed.MODEL, embed.FEEL_MODEL):
+            m = embed.load_matrix(conn, idx.ids, model)
+            if not m.any():
+                log.warning("no %s embeddings; that signal is off", model)
+                m = None
+            mats.append(m)
+        return cls(idx, *mats)
 
 
 def profile_weights(history: Sequence[tuple[int, float, float]]) -> list[tuple[int, float]]:
@@ -58,6 +62,7 @@ class ContentModel:
         use_sparse: bool = True,
         use_dense: bool = True,
         dense_weight: float = 1.0,
+        use_vibe: bool = False,
     ):
         self.name = name
         self.cat = cat
@@ -65,6 +70,8 @@ class ContentModel:
         self.use_sparse = use_sparse
         self.use_dense = use_dense and features.dense is not None
         self.dense_weight = dense_weight
+        self.families = sparse.FAMILIES if use_vibe else sparse.CONTENT_FAMILIES
+        self.use_feel = use_vibe and features.feel is not None
         # Catalogue titles that have features, and their feature rows.
         keep = [i for i, t in enumerate(cat.ids) if int(t) in features.sparse.index]
         self.cat_ids = cat.ids[keep]
@@ -78,11 +85,13 @@ class ContentModel:
             return scores[self.rows]
         rows = np.array([r for r, _ in pairs])
         weights = np.array([w for _, w in pairs], dtype=np.float32)
+        norm = weights / np.abs(weights).sum()
         if self.use_sparse:
-            scores += self.f.sparse.combined(rows, weights)
+            scores += self.f.sparse.combined(rows, weights, self.families)
         if self.use_dense:
-            profile = (weights / np.abs(weights).sum()) @ self.f.dense[rows]
-            scores += self.dense_weight * (self.f.dense @ profile)
+            scores += self.dense_weight * (self.f.dense @ (norm @ self.f.dense[rows]))
+        if self.use_feel:
+            scores += self.f.feel @ (norm @ self.f.feel[rows])
         return scores[self.rows]
 
     def recommend(self, history, exclude, k):
@@ -113,3 +122,7 @@ register(
     lambda cat, _, conn: ContentModel("content-dense", cat, features_for(conn), use_sparse=False),
 )
 register("content", lambda cat, _, conn: ContentModel("content", cat, features_for(conn)))
+register(
+    "content-vibe",
+    lambda cat, _, conn: ContentModel("content-vibe", cat, features_for(conn), use_vibe=True),
+)

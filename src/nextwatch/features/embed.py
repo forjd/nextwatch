@@ -11,6 +11,8 @@ from psycopg import Connection
 log = logging.getLogger(__name__)
 
 MODEL = "bge-small-en-v1.5"
+# Embeddings of the vibe "feel" sentence (plan 05), same model, stored under their own name.
+FEEL_MODEL = f"{MODEL}:feel"
 FASTEMBED_NAME = "BAAI/bge-small-en-v1.5"
 DIM = 384
 BATCH = 256
@@ -69,15 +71,23 @@ def _texts(conn: Connection) -> list[tuple[int, str]]:
     return [(r[0], title_text(r[1], r[2], r[5], r[3], r[4], r[6])) for r in rows]
 
 
+def _feel_texts(conn: Connection) -> list[tuple[int, str]]:
+    return conn.execute(
+        "SELECT DISTINCT ON (title_id) title_id, feel FROM title_vibe"
+        " ORDER BY title_id, created_at DESC"
+    ).fetchall()
+
+
 def embed_titles(conn: Connection, embed: Embedder, model: str = MODEL) -> int:
     """Embed every title whose text changed since it was last embedded. Returns the count."""
+    texts = _feel_texts(conn) if model == FEEL_MODEL else _texts(conn)
     existing = dict(
         conn.execute(
             "SELECT title_id, source_hash FROM title_embedding WHERE model = %s", (model,)
         ).fetchall()
     )
-    todo = [(tid, text) for tid, text in _texts(conn) if existing.get(tid) != text_hash(text)]
-    log.info("%d titles to embed", len(todo))
+    todo = [(tid, text) for tid, text in texts if existing.get(tid) != text_hash(text)]
+    log.info("%s: %d titles to embed", model, len(todo))
     for start in range(0, len(todo), BATCH):
         batch = todo[start : start + BATCH]
         vectors = embed([text for _, text in batch]).astype(np.float32)

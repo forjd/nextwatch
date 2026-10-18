@@ -1,0 +1,125 @@
+# Vibe vocabulary for plan 05. Changing it means bumping prompt_version in vibes/prompt.py,
+# which re-tags the affected titles.
+
+tone:
+  - dark
+  - bleak
+  - melancholic
+  - tense
+  - eerie
+  - warm
+  - uplifting
+  - light
+  - whimsical
+  - absurd
+  - satirical
+  - cynical
+  - romantic
+  - earnest
+  - campy
+
+pacing: [slow-burn, measured, brisk, relentless]
+
+attention: [background-friendly, easy-watch, engaged, demanding]
+
+themes:
+  - grief
+  - revenge
+  - coming-of-age
+  - identity
+  - obsession
+  - isolation
+  - found family
+  - family
+  - friendship
+  - love
+  - class
+  - power
+  - corruption
+  - addiction
+  - faith
+  - survival
+  - justice
+  - ambition
+  - betrayal
+  - memory
+  - parenthood
+  - redemption
+  - guilt
+  - morality
+  - freedom
+  - war
+  - violence
+  - crime
+  - greed
+  - loneliness
+  - madness
+  - death
+  - fate
+  - technology
+  - nature
+  - environment
+  - colonialism
+  - race
+  - gender
+  - sexuality
+  - immigration
+  - politics
+  - media
+  - celebrity
+  - art
+  - music
+  - sport
+  - work
+  - education
+  - science
+  - exploration
+  - heist
+  - conspiracy
+  - mystery
+  - deception
+  - loyalty
+  - rebellion
+  - trauma
+  - healing
+  - aging
+
+era: [period, contemporary, near-future, far-future, timeless]
+
+places:
+  - small town
+  - big city
+  - suburbs
+  - countryside
+  - workplace
+  - school
+  - hospital
+  - prison
+  - military
+  - wilderness
+  - sea
+  - space
+  - fantasy world
+  - home
+  - road trip
+  - single country house
+
+form:
+  - twist ending
+  - nonlinear
+  - unreliable narrator
+  - ensemble
+  - anthology
+  - mockumentary
+  - found footage
+  - single location
+  - procedural
+  - serialised
+  - musical
+  - animated
+  - documentary
+  - true story
+
+intensity_levels: [none, mild, strong]
+
+knowledge: [known, partial, overview-only]

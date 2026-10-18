@@ -217,8 +217,9 @@ def embed() -> None:
     embedder = e.fastembed_embedder(DATA_DIR / "models")
     with db.connect(load_settings().database_url, autocommit=True) as conn:
         n = e.embed_titles(conn, embedder)
+        n_feel = e.embed_titles(conn, embedder, e.FEEL_MODEL)
         db.log_db_size(conn)
-    click.echo(f"embedded {n} titles")
+    click.echo(f"embedded {n} titles and {n_feel} feel sentences")
 
 
 @main.command()
@@ -241,3 +242,18 @@ def similar(ref: str, model_name: str, k: int) -> None:
         for t in model.similar(seed, k):
             mt, tid = cat.tmdb_key[t]
             click.echo(f"{mt}/{tid}\t{names[t]}")
+
+
+@main.command()
+@click.option("--limit", type=int, help="Tag at most this many titles.")
+@click.option("--spike", is_flag=True, help="Tag a mixed sample and write data/vibes-spike.md.")
+def vibes(limit: int | None, spike: bool) -> None:
+    """Tag untagged titles with vibe tags through OpenRouter (plan 05)."""
+    from nextwatch.vibes import job
+
+    settings = load_settings()
+    with db.connect(settings.database_url, autocommit=True) as conn:
+        stats = job.run(conn, settings, limit=limit, spike=spike)
+        if spike:
+            job.spike_report(conn, stats, DATA_DIR / "vibes-spike.md")
+            click.echo(f"wrote {DATA_DIR / 'vibes-spike.md'}")

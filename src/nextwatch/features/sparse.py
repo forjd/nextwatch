@@ -15,7 +15,10 @@ from scipy import sparse
 
 log = logging.getLogger(__name__)
 
-FAMILIES = ("cast", "director", "writer", "crew", "keyword", "genre", "meta")
+CONTENT_FAMILIES = ("cast", "director", "writer", "crew", "keyword", "genre", "meta")
+# Vibe tags (plan 05) are a family too, kept out of the default content mix so experiments
+# can measure what they add.
+FAMILIES = (*CONTENT_FAMILIES, "vibe")
 
 WRITER_JOBS = ("Screenplay", "Writer", "Story", "Novel", "Characters")
 CREW_JOBS = ("Original Music Composer", "Director of Photography", "Editor", "Producer")
@@ -60,9 +63,11 @@ class SparseIndex:
             out[f] = np.asarray((m @ profile.T).todense()).ravel()
         return out
 
-    def combined(self, rows: np.ndarray, weights: np.ndarray) -> np.ndarray:
+    def combined(
+        self, rows: np.ndarray, weights: np.ndarray, families=CONTENT_FAMILIES
+    ) -> np.ndarray:
         """Equal-weight sum over families. Used for candidates only; the ranker learns weights."""
-        return sum(self.profile_scores(rows, weights).values())
+        return sum(self.profile_scores(rows, weights, families).values())
 
     def pair(self, a: int, b: np.ndarray) -> dict[str, np.ndarray]:
         """Cosine per family between row a and each row in b."""
@@ -108,7 +113,27 @@ def _tokens(conn: Connection) -> tuple[np.ndarray, dict[str, dict[int, dict[str,
         add("meta", tid, f"country:{country}")
     for tid, cid in conn.execute("SELECT title_id, company_id FROM title_company"):
         add("meta", tid, f"company:{cid}")
+    for tid, tags in conn.execute(
+        "SELECT DISTINCT ON (title_id) title_id, tags FROM title_vibe"
+        " ORDER BY title_id, created_at DESC"
+    ):
+        for token, weight in vibe_tokens(tags):
+            add("vibe", tid, token, weight)
     return ids, fam
+
+
+def vibe_tokens(tags: dict) -> list[tuple[str, float]]:
+    """Tokens for one title's vibe tags. Tone strength 1-3 scales the weight."""
+    out = [(f"tone:{t['value']}", t["strength"] / 3) for t in tags.get("tone", [])]
+    for key in ("pacing", "attention", "era"):
+        if tags.get(key):
+            out.append((f"{key}:{tags[key]}", 1.0))
+    for key, prefix in (("themes", "theme"), ("places", "place"), ("form", "form")):
+        out += [(f"{prefix}:{x}", 1.0) for x in tags.get(key, [])]
+    for kind, level in tags.get("intensity", {}).items():
+        if level != "none":
+            out.append((f"{kind}:{level}", 1.0))
+    return out
 
 
 def tfidf(rows: list[dict[str, float]], n_docs: int) -> tuple[sparse.csr_matrix, dict[str, int]]:

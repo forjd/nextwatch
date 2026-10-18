@@ -8,7 +8,7 @@ An LLM reads what we know about each title, plus what it already knows about wel
 
 ## Vocabulary
 
-A fixed list, versioned in `vibes/vocabulary.yaml`, so tags are comparable across titles and usable as features. Free-text tags would not be. First draft:
+A fixed list, versioned in `src/nextwatch/vibes/vocabulary.yaml`, so tags are comparable across titles and usable as features. Free-text tags would not be. First draft:
 
 | Dimension | Values | Shape |
 | --- | --- | --- |
@@ -23,7 +23,7 @@ A fixed list, versioned in `vibes/vocabulary.yaml`, so tags are comparable acros
 
 Plus a free-text `feel`: one sentence of up to 30 words on what it is like to watch, for example "A cold, patient procedural about obsession that leaves you uneasy rather than satisfied."
 
-Changing the vocabulary bumps `prompt_version`, and the affected titles are re-tagged.
+Changing the vocabulary or the prompt means bumping `PROMPT_VERSION` in `src/nextwatch/vibes/prompt.py`; titles tagged with an older version are re-tagged.
 
 ## Input and output
 
@@ -61,11 +61,11 @@ OpenRouter has no batch API, so we make normal requests with a small async worke
 - `nextwatch vibes` picks eligible titles without a `title_vibe` for the current `VIBE_MODEL` and `prompt_version`, most popular first, and tags them with `VIBE_CONCURRENCY` (start at 8) requests in flight.
 - On `429`, back off and slow the pool, the same as TMDB ingest ([01](01-ingest.md)). A `502` is a failed generation, which OpenRouter does not bill: retry it. A response that fails schema validation is retried once, then logged and skipped.
 - Each result is written as it arrives, so the job can stop and restart at any time.
-- A spend cap, `VIBE_BUDGET_USD`, stops the job once the month's spend reaches it. Spend comes from the `usage` in each response.
+- A spend cap, `VIBE_BUDGET_USD` (default $30), stops the job once the month's spend reaches it. Spend comes from the `usage` in each response, and every billed call counts, including replies that fail validation.
 - The backfill runs locally. At ~2–5 requests a second it takes about 10–20 hours.
 - Daily, after `normalise`, `vibes` tags the new eligible titles. That takes a minute or two.
 
-**Spike first:** tag 200 titles (100 well-known, 100 obscure, half TV), read them, and check the real token counts and cost before the backfill.
+**Spike first:** `nextwatch vibes --spike` tags 200 titles (the 50 most and 50 least voted of each type), writes them to `data/vibes-spike.md` to read, and projects the backfill cost from real token counts. Run it before the backfill.
 
 ## Features
 
