@@ -15,11 +15,11 @@ Learn from what people watch and like together, which content features cannot se
 **Implicit ALS** with the `implicit` library.
 
 - Matrix: train users × movies that map to an eligible `title`.
-- Confidence: `1 + α · max(rating − 2.5, 0)`. Ratings of 2.5 and below count only as weak "seen" signals. Start with α = 10 and tune on validation.
+- Confidence: `1 + α · max(rating − 2.5, 0) + 0.1`. Ratings of 2.5 and below count only as weak "seen" signals (the 0.1 floor keeps them in the matrix). Start with α = 10 and tune on validation.
 - Factors: 128. Regularisation and iterations tuned on validation.
 - Output: item factors (~87k × 128 floats, ~45 MB) and the parameters, saved as a `model_artifact` named `als`.
 
-**Owner fold-in.** At request time, compute a user vector from the owner's ratings with the same confidence weighting, using `implicit`'s `recalculate_user`. This is a small least-squares solve, a few milliseconds. No retraining when the owner rates something.
+**Owner fold-in.** At request time, solve a user vector from the owner's ratings with the same confidence weighting, in numpy (`AlsModel.user_vector`), so the app does not need `implicit`. Measured: ~2 ms for a 300-rating history including scoring 80k items. No retraining when the owner rates something.
 
 **Item-item.** `sim_als` between two titles is the cosine of their item factors.
 
@@ -37,7 +37,7 @@ The ranker ([07](07-ranking.md)) sees missing CF features as missing (LightGBM h
 
 ## When it trains
 
-MovieLens does not change, so ALS only retrains when the code, parameters or eligible set change. `nextwatch train als` runs locally, takes minutes and ~4–8 GB of RAM, and writes a new `model_artifact` version with its validation metrics in `meta`. Nothing about this needs to run on Railway.
+MovieLens does not change, so ALS only retrains when the code, parameters or eligible set change. `nextwatch train als` runs locally and writes a new `model_artifact` version (the newest 3 are kept). Measured on the full train split (161k users, 81k movies, 25.6M ratings): 70 seconds, 3.4 GB peak RAM, a 37 MB artifact. Nothing about this needs to run on Railway.
 
 ## How we know it works
 

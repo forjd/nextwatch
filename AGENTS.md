@@ -52,6 +52,9 @@ Python 3.12 for everything (ingest, features, training, API), managed with `uv`.
 | `src/nextwatch/evaluation/` | Splits, metrics, baselines (`MODELS`) and the eval harness |
 | `src/nextwatch/features/` | Sparse TF-IDF families (`sparse.py`), embeddings (`embed.py`), content models (`content.py`) |
 | `src/nextwatch/vibes/` | Vocabulary, prompt, OpenRouter client and the `vibes` job |
+| `src/nextwatch/cf/als.py` | Implicit ALS training, numpy fold-in, `als` recommender |
+| `src/nextwatch/models_store.py` | Save, load and prune `model_artifact` rows |
+| `src/nextwatch/registry.py` | Imports every model module; use its `MODELS` |
 | `src/nextwatch/http.py` | Shared HTTP settings (system CA store) |
 | `eval/golden.yaml` | Golden set for T3, written by the owner |
 | `tests/` | pytest. `conftest.py` has a fake TMDB API and a throwaway test database |
@@ -81,6 +84,7 @@ uv run nextwatch embed        # after normalise: embed new or changed titles
 uv run nextwatch vibes --spike # 200-title sample to read; then `vibes` for the rest
 uv run nextwatch similar movie/603             # quick look at "more like this"
 uv run nextwatch movielens fetch               # once, before backfill
+uv run nextwatch train als                     # ~70 s on the full train split
 uv run nextwatch eval run --model popular      # see `eval models`
 uv run nextwatch eval compare <run> <run>
 uv run nextwatch queue        # what is left in the ingest queue
@@ -97,7 +101,7 @@ Before committing, run `uv run ruff check .`, `uv run ruff format --check .` and
 - Tests never call the real TMDB or OpenRouter APIs. Add behaviour to `FakeTmdb` or `FakeOpenRouter` instead. Payload fixtures shaped like real responses live in `tests/payloads.py`.
 - Use `nextwatch.http.SSL_CONTEXT` for every HTTP client: certifi's bundle rejects `files.grouplens.org`.
 - Recommenders get history as `(title_id, rating, unix_time)`, oldest first.
-- A new recommender must register in `MODELS` and be compared with `eval compare` against the current best before it is kept.
+- A new recommender must register in `MODELS` (and its module be imported in `registry.py`) and be compared with `eval compare` against the current best before it is kept.
 - Each plan owns its tables: add them in a new migration when that plan is built, not earlier.
 
 ## CI
@@ -119,7 +123,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): 
 | [03 — Evaluation](docs/plans/03-evaluation.md) | MovieLens splits, metrics, golden set, harness | Built and tested on synthetic data. Real runs wait for the TMDB backfill. Golden set has 3 starter cases. |
 | [04 — Content similarity](docs/plans/04-content-similarity.md) | TF-IDF feature families, embeddings, profiles | Built and tested; real model checked. Experiments wait for the backfill. |
 | [05 — Vibe tags](docs/plans/05-vibe-tags.md) | LLM tags from a fixed vocabulary, through OpenRouter | Built and tested against a fake API. Needs `OPENROUTER_API_KEY` and the spike. |
-| [06 — Collaborative filtering](docs/plans/06-collaborative-filtering.md) | Implicit ALS on MovieLens, owner fold-in, coverage gaps | Not started |
+| [06 — Collaborative filtering](docs/plans/06-collaborative-filtering.md) | Implicit ALS on MovieLens, owner fold-in, coverage gaps | Built and tested; training timed on real MovieLens. Eval waits for the backfill. |
 | [07 — Ranking](docs/plans/07-ranking.md) | Candidates, features, LambdaRank, re-ranking | Not started |
 | [08 — App](docs/plans/08-app.md) | FastAPI and HTMX app, onboarding, feedback, access | Not started |
 | [09 — Deploy](docs/plans/09-deploy.md) | Docker Compose locally, Railway services, cost | `compose.yaml` for Postgres only |

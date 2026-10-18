@@ -152,9 +152,9 @@ def eval_group() -> None:
 @click.option("--golden", type=click.Path(path_type=Path), default=Path("eval/golden.yaml"))
 def eval_run(model_name: str, split: str, n_users: int, golden: Path) -> None:
     """Score a model on T1, T2 and the golden set, and save the run."""
-    import nextwatch.features.content  # noqa: F401 - registers the content models
     from nextwatch.evaluation import data, harness
-    from nextwatch.evaluation.models import MODELS, Catalogue
+    from nextwatch.evaluation.models import Catalogue
+    from nextwatch.registry import MODELS
 
     if model_name not in MODELS:
         raise click.BadParameter(f"unknown model; choose from {', '.join(MODELS)}")
@@ -203,8 +203,7 @@ def eval_compare(a: int, b: int) -> None:
 @eval_group.command("models")
 def eval_models() -> None:
     """List the models `eval run` can score."""
-    import nextwatch.features.content  # noqa: F401 - registers the content models
-    from nextwatch.evaluation.models import MODELS
+    from nextwatch.registry import MODELS
 
     click.echo("\n".join(MODELS))
 
@@ -228,8 +227,8 @@ def embed() -> None:
 @click.option("-k", default=10, show_default=True)
 def similar(ref: str, model_name: str, k: int) -> None:
     """Print titles similar to REF, written as movie/603 or tv/1396."""
-    import nextwatch.features.content  # noqa: F401 - registers the content models
-    from nextwatch.evaluation.models import MODELS, Catalogue
+    from nextwatch.evaluation.models import Catalogue
+    from nextwatch.registry import MODELS
 
     media_type, tmdb_id = ref.split("/")
     with db.connect(load_settings().database_url) as conn:
@@ -257,3 +256,37 @@ def vibes(limit: int | None, spike: bool) -> None:
         if spike:
             job.spike_report(conn, stats, DATA_DIR / "vibes-spike.md")
             click.echo(f"wrote {DATA_DIR / 'vibes-spike.md'}")
+
+
+@main.group("train")
+def train_group() -> None:
+    """Train models on MovieLens train users and store them in model_artifact."""
+
+
+@train_group.command("als")
+@click.option("--factors", default=128, show_default=True)
+@click.option("--regularization", default=0.05, show_default=True)
+@click.option("--alpha", default=10.0, show_default=True)
+@click.option("--iterations", default=15, show_default=True)
+def train_als(factors: int, regularization: float, alpha: float, iterations: int) -> None:
+    """Implicit ALS (plan 06). Evaluate the result with `eval run --model als`."""
+    import time
+
+    from nextwatch import models_store
+    from nextwatch.cf import als
+    from nextwatch.evaluation import data, harness
+
+    params = als.AlsParams(factors, regularization, alpha, iterations)
+    with db.connect(load_settings().database_url, autocommit=True) as conn:
+        interactions = data.load_interactions(DATA_DIR, data.movielens_to_title(conn))
+        started = time.monotonic()
+        model, _ = als.train(data.train_interactions(interactions), params)
+        meta = {
+            "params": params.__dict__,
+            "items": len(model.item_ids),
+            "seconds": round(time.monotonic() - started, 1),
+            "git": harness.git_sha(),
+        }
+        version = models_store.save(conn, als.ARTIFACT, model.to_bytes(), meta)
+        models_store.prune(conn, als.ARTIFACT)
+    click.echo(f"saved als version {version}: {meta}")

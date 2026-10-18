@@ -213,6 +213,26 @@ wheels = [
 ]
 
 [[package]]
+name = "implicit"
+version = "0.7.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "scipy" },
+    { name = "threadpoolctl" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/32/24/bdaa4be7fcfb568d63e0ddff948c486515c6b728055ee060f3f131803476/implicit-0.7.3.tar.gz", hash = "sha256:9571a52d70b3667e99a6e6aae6681526dd3286c765cf0ea10e1073d068a98057", size = 443981, upload-time = "2026-05-14T04:36:05.331Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b3/dc/bc39f9df23682e31ce5b09d00f5c92591a8d750f84b3d4751d07f6ea61a7/implicit-0.7.3-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:4970db19607f6f33cc4f2567233e03a4902191b6ebed7f264f8810d730dadb23", size = 1262250, upload-time = "2026-05-08T18:37:18.13Z" },
+    { url = "https://files.pythonhosted.org/packages/8d/43/e398cf7b789a540f9143296c03204959c1d9e1b1bdb9bd176d6b5e55afd8/implicit-0.7.3-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:a04066fa5798bb094533678b45f1a3298cd44acb8c42f516fe46893be1989227", size = 679718, upload-time = "2026-05-08T18:37:19.354Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/25/b3db94464aa01bee2a3717217d425d3ba8f1e18689ed01ac000c79d88cb9/implicit-0.7.3-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:4483a3746d97f077c61d87a23bc7b6948ae75957def1cb4828d4a96ec5b91e75", size = 647840, upload-time = "2026-05-08T18:37:20.414Z" },
+    { url = "https://files.pythonhosted.org/packages/65/4b/e4c93654e6c5303a544f4505fb25a962213d603886ce71558026ce698cbd/implicit-0.7.3-cp312-cp312-manylinux2014_aarch64.whl", hash = "sha256:ab5825723918b790cab45c2ec64669ac03b1b1774e9ce62957b67ad37fdf2d45", size = 843644, upload-time = "2026-05-08T18:37:21.439Z" },
+    { url = "https://files.pythonhosted.org/packages/fd/4a/615b55e3303fee9d1f54a0e01ea399712f77774fccbe763d125a51d9b978/implicit-0.7.3-cp312-cp312-manylinux2014_x86_64.whl", hash = "sha256:0de3734a74db5248b474ebf2c2e9dcf9ab16de137a009436f6ae8f8880486ac2", size = 7636123, upload-time = "2026-05-08T18:37:22.85Z" },
+    { url = "https://files.pythonhosted.org/packages/95/44/d8de15893da635602dd2880855494c775d14a0380641d7082fd8efa1a02f/implicit-0.7.3-cp312-cp312-win_amd64.whl", hash = "sha256:c3e10e634a1b24bb1e8a036529940b8884c33a2dbb9fb19194827c0b68802edc", size = 676685, upload-time = "2026-05-08T18:37:24.686Z" },
+]
+
+[[package]]
 name = "iniconfig"
 version = "2.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -268,6 +288,7 @@ dependencies = [
     { name = "click" },
     { name = "fastembed" },
     { name = "httpx" },
+    { name = "implicit" },
     { name = "numpy" },
     { name = "polars" },
     { name = "psycopg", extra = ["binary"] },
@@ -289,6 +310,7 @@ requires-dist = [
     { name = "click", specifier = ">=8.1" },
     { name = "fastembed", specifier = ">=0.9.0" },
     { name = "httpx", specifier = ">=0.28" },
+    { name = "implicit", specifier = ">=0.7.3" },
     { name = "numpy", specifier = ">=2.5.4" },
     { name = "polars", specifier = ">=2.0.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
@@ -610,6 +632,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/91/4c/075e4f66471bac101141ac739e9e135549be1bae584571bd03a530c056e1/scipy-1.18.1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:d2924a03db38dc2e848bca2fe9f077dafb891480b91a00a0963a8cf86dfc31c1", size = 37480330, upload-time = "2026-08-21T23:24:19.608Z" },
     { url = "https://files.pythonhosted.org/packages/39/e7/979fd14e75008623df31ba70d6bb144700f68feadcea042021c06a05bf82/scipy-1.18.1-cp312-cp312-win_amd64.whl", hash = "sha256:5e4d44984abc0020154ea81b247adeddcc3ac5527b975ff798bd1ba0adc513c2", size = 36658278, upload-time = "2026-08-21T23:24:25.463Z" },
     { url = "https://files.pythonhosted.org/packages/c7/0b/e1525354ff9d7d5feb6d1b31af6d14072e5c91e9607b421fa1ec889660b3/scipy-1.18.1-cp312-cp312-win_arm64.whl", hash = "sha256:d65d448389b8436493abcf629cc94ad0cf32aecaf06e1acca1de53cc795f2f12", size = 24400588, upload-time = "2026-08-21T23:24:30.579Z" },
+]
+
+[[package]]
+name = "threadpoolctl"
+version = "3.7.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/00/dc/6c58154c1c65f758ea979e7139cb76993a9cfc662d14e9be3c4a667cfb77/threadpoolctl-3.7.0.tar.gz", hash = "sha256:61348cfb77d53b9242e0017029244b559b810c142ced65b4e21eeca1843959a7", size = 31961, upload-time = "2026-09-15T15:46:20.263Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/3f/f88a53f60a472b46f4023f56d204dd7de33d34c5d2acbfa0d70a674e639e/threadpoolctl-3.7.0-py3-none-any.whl", hash = "sha256:cd8b60b5641b45c67bbf73c64c843235fc2d8a480c87389f52f5dbee893b86be", size = 26362, upload-time = "2026-09-15T15:46:19.168Z" },
 ]
 
 [[package]]
