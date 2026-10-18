@@ -10,6 +10,8 @@ from pathlib import Path
 
 import httpx
 
+from nextwatch.http import SSL_CONTEXT
+
 log = logging.getLogger(__name__)
 
 EXPORT_URL = "https://files.tmdb.org/p/exports/{name}_{date:%m_%d_%Y}.json.gz"
@@ -35,7 +37,9 @@ def download_export(
     """Download the newest export: today's if it is out, else yesterday's. Returns the path."""
     today = today or dt.datetime.now(dt.UTC).date()
     dest_dir.mkdir(parents=True, exist_ok=True)
-    with httpx.Client(timeout=120, transport=transport, follow_redirects=True) as http:
+    with httpx.Client(
+        timeout=120, transport=transport, follow_redirects=True, verify=SSL_CONTEXT
+    ) as http:
         for date in (today, today - dt.timedelta(days=1)):
             url = export_url(media_type, date)
             path = dest_dir / url.rsplit("/", 1)[1]

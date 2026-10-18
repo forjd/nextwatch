@@ -122,3 +122,86 @@ def import_backup(path: Path) -> None:
     with db.connect(load_settings().database_url) as conn:
         r, e, skipped = backup.import_data(conn, backup.loads(path.read_bytes()))
     click.echo(f"restored {r} ratings, {e} events ({skipped} skipped)")
+
+
+@main.group("movielens")
+def movielens_group() -> None:
+    """MovieLens 32M data (research licence, personal use only)."""
+
+
+@movielens_group.command("fetch")
+def movielens_fetch() -> None:
+    """Download MovieLens 32M, convert it to Parquet and load the TMDB links."""
+    from nextwatch import movielens
+
+    movielens.fetch(DATA_DIR)
+    with db.connect(load_settings().database_url) as conn:
+        n = movielens.load_links(conn, DATA_DIR)
+    click.echo(f"loaded {n} links; run `nextwatch backfill` to ingest MovieLens movies")
+
+
+@main.group("eval")
+def eval_group() -> None:
+    """Offline evaluation (docs/plans/03-evaluation.md)."""
+
+
+@eval_group.command("run")
+@click.option("--model", "model_name", required=True, help="Model name, see `eval models`.")
+@click.option("--split", type=click.Choice(["validation", "test"]), default="validation")
+@click.option("--users", "n_users", default=5000, show_default=True)
+@click.option("--golden", type=click.Path(path_type=Path), default=Path("eval/golden.yaml"))
+def eval_run(model_name: str, split: str, n_users: int, golden: Path) -> None:
+    """Score a model on T1, T2 and the golden set, and save the run."""
+    from nextwatch.evaluation import data, harness
+    from nextwatch.evaluation.models import MODELS, Catalogue
+
+    if model_name not in MODELS:
+        raise click.BadParameter(f"unknown model; choose from {', '.join(MODELS)}")
+    factory = MODELS[model_name]
+    with db.connect(load_settings().database_url, autocommit=True) as conn:
+        movie_cat = Catalogue.load(conn, "movie")
+        full_cat = Catalogue.load(conn)
+        interactions = data.load_interactions(DATA_DIR, data.movielens_to_title(conn))
+        users = data.eval_users(interactions, split, n_users)
+        train = data.train_interactions(interactions)
+        result = harness.evaluate(
+            factory(movie_cat, train),
+            users,
+            movie_cat,
+            model_all=factory(full_cat, train),
+            full_cat=full_cat,
+            golden=harness.load_golden(golden),
+        )
+        config = {
+            "model": model_name,
+            "split": split,
+            "users": n_users,
+            "seed": data.SEED,
+            "k": harness.K,
+            "git": harness.git_sha(),
+        }
+        run_id = harness.save_run(conn, config, result, Path("eval/reports"))
+    t1 = result["t1"]
+    click.echo(
+        f"run {run_id}: nDCG@20 {t1['ndcg@20']['mean']:.4f}, "
+        f"recall@20 {t1['recall@20']['mean']:.4f}, T2 {result['t2']['recall@20']['mean']:.4f}"
+    )
+
+
+@eval_group.command("compare")
+@click.argument("a", type=int)
+@click.argument("b", type=int)
+def eval_compare(a: int, b: int) -> None:
+    """Compare two eval runs, with paired bootstrap intervals."""
+    from nextwatch.evaluation import harness
+
+    with db.connect(load_settings().database_url) as conn:
+        click.echo(harness.compare(conn, a, b))
+
+
+@eval_group.command("models")
+def eval_models() -> None:
+    """List the models `eval run` can score."""
+    from nextwatch.evaluation.models import MODELS
+
+    click.echo("\n".join(MODELS))

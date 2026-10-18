@@ -13,6 +13,8 @@ from typing import Any
 
 import httpx
 
+from nextwatch.http import SSL_CONTEXT
+
 log = logging.getLogger(__name__)
 
 API_BASE = "https://api.themoviedb.org/3"
@@ -87,6 +89,7 @@ class TmdbClient:
             headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
             timeout=httpx.Timeout(30.0),
             transport=transport,
+            verify=SSL_CONTEXT,
         )
         self.limiter = RateLimiter(rate)
         self.max_429_retries = max_429_retries

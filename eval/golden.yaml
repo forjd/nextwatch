@@ -1,0 +1,19 @@
+# Golden set for plan 03, task T3. Owned by the owner: edit freely.
+#
+# Each case: a seed title, titles that must appear in its "more like this" top 20,
+# and titles that must not. Refs are <media_type>/<tmdb_id>. The comments give the names.
+# A case whose titles are not in the catalogue is reported as "missing", not failed.
+#
+# Aim for ~50 cases, half TV. These are starter examples to replace.
+
+- seed: tv/95396          # Severance
+  must: [tv/62560, tv/42009]   # Mr. Robot, Black Mirror
+  must_not: [tv/2316]          # The Office
+
+- seed: movie/603         # The Matrix
+  must: [movie/604]            # The Matrix Reloaded
+  must_not: [movie/862]        # Toy Story
+
+- seed: tv/1396           # Breaking Bad
+  must: [tv/60059]             # Better Call Saul
+  must_not: [tv/1668]          # Friends

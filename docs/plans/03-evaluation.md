@@ -12,6 +12,7 @@ There is one user and no history, so there is nothing of the owner's to evaluate
 
 - MovieLens 32M: 32M ratings (0.5–5 stars) from ~200k users on ~87k movies, with timestamps up to late 2023. Research licence: fine for this personal project, never redistributed or committed. Downloaded to `data/movielens/` by `nextwatch movielens fetch` and converted to Parquet.
 - Only movies whose `tmdbId` maps to an eligible `title` take part.
+- T1 and T2 rank movies only, because every held-out answer is a movie. T3 ranks the whole catalogue.
 - A rating of **4.0 or more** is a positive. Everything else the user rated is "seen", so we never count it as a hit or recommend it back.
 
 ## Splits
@@ -27,7 +28,7 @@ There is one user and no history, so there is nothing of the owner's to evaluate
 - Recall@20 and nDCG@20 (main metrics).
 - Coverage: share of the catalogue that appears in anyone's top 20.
 - Popularity bias: mean log `vote_count` of recommended titles versus the held-out positives.
-- Intra-list diversity: mean pairwise embedding distance inside each top 20.
+- Intra-list diversity: mean pairwise embedding distance inside each top 20. (Added with embeddings in [04](04-content-similarity.md).)
 
 **T2. "More like this."** For a seed title, rank similar titles. MovieLens gives a proxy: titles that the same users rate highly within a short time of each other. For each test user, take a positive from history as the seed and their held-out positives as targets. Report Recall@20.
 
@@ -45,7 +46,8 @@ Every report shows these, so numbers have something to compare against:
 
 ## Harness
 
-- `nextwatch eval run --model <name> --split validation` builds each user's history, calls the model through one interface (`recommend(history, k) -> [title_id]` and `similar(title_id, k)`), computes metrics, and writes an `eval_run` row plus `eval/reports/<timestamp>-<model>.md`.
+- `nextwatch eval run --model <name> --split validation` builds each user's history, calls the model through one interface (`recommend(history, exclude, k) -> [title_id]` and `similar(title_id, k)`), computes metrics, and writes an `eval_run` row plus `eval/reports/<timestamp>-<id>-<model>.md`. Reports are gitignored; the `eval_run` table keeps every result.
+- Models register in `MODELS` in `src/nextwatch/evaluation/models.py`. Each factory gets the catalogue and the train users' interactions.
 - `nextwatch eval compare <run> <run>` prints a side-by-side table with bootstrap 95% intervals, so we can see whether a difference is real or noise.
 - Fixed seeds everywhere. The same model and data give the same numbers.
 
