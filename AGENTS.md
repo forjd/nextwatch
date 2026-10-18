@@ -1,0 +1,42 @@
+# AGENTS.md
+
+`nextwatch` is a personal movie and TV recommendation engine. It keeps a local copy of TMDB's catalogue and ranks titles with a hybrid of content similarity, collaborative filtering and a learned ranker.
+
+The project is in the planning stage. There is no code yet. Plans live in `docs/plans/` and are the source of truth until code exists.
+
+## Scope and constraints
+
+- Personal use only. No public service, no other users. This keeps us inside the TMDB API terms for non-commercial use and the MovieLens research licence.
+- There is no existing watch history. Collaborative signal comes from MovieLens until the owner's own ratings exist.
+- Movies and TV are one catalogue. A show can recommend a movie and the reverse.
+- TMDB requires attribution in any UI: "This product uses the TMDB API but is not endorsed or certified by TMDB."
+- Never commit API keys or downloaded datasets. Keys go in `.env` (gitignored). Data goes in `data/` (gitignored).
+
+## Approach
+
+The plans expand on each part. In short:
+
+1. **Ingest.** Seed IDs from TMDB's daily export files, fetch each title with `append_to_response` (credits, keywords, external IDs, watch providers, release dates or content ratings), then sync daily with the `/changes` endpoints.
+2. **Store.** Postgres with `pgvector`. Raw API responses in `jsonb`, plus normalised tables for titles, people, credits, keywords and genres.
+3. **Features.** TF-IDF weighted sparse features (cast, crew, keywords, genres), text embeddings of overviews, LLM-extracted "vibe" tags (tone, pacing, themes), and implicit-feedback collaborative filtering trained on MovieLens.
+4. **Rank.** Candidate generation from each signal, then a learning-to-rank model (LightGBM LambdaRank) combines them. Weights are learned, not hand-tuned.
+5. **Re-rank.** Diversity (MMR), popularity debiasing, and filtering by UK watch providers.
+6. **Evaluate.** Offline recall@k and nDCG on held-out MovieLens histories. Every change to ranking must be measured against this before it is kept.
+
+## Layout
+
+| Path | What it is |
+| --- | --- |
+| `docs/plans/` | Numbered plan files, one per area (`NN-topic.md`) |
+| `AGENTS.md` | This file |
+| `CLAUDE.md` | Just `@AGENTS.md` |
+| `LICENSE` | MIT |
+
+Update this table when you add top-level paths.
+
+## Writing plans
+
+- One file per area, numbered in the order it should be built: `01-ingest.md`, `02-storage.md`, and so on.
+- Each plan states its goal, the decisions made and why, open questions, and how we know it works.
+- When a decision changes, edit the plan rather than adding a contradicting note below it.
+- Keep plans short enough to read in one sitting. Split a plan that grows past that.
